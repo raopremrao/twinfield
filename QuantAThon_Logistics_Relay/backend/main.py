@@ -228,6 +228,7 @@ async def simulate(request: SimulateRequest):
         spoke_names = [h["id"] for h in net["hubs"]]
         net["status"] = "Generating Quantum Keys via SeQUeNCe..."
         net["started_by"] = request.started_by or "NOC Supervisor"
+        net["last_simulation"] = None
 
     loop = asyncio.get_running_loop()
     try:
@@ -241,7 +242,8 @@ async def simulate(request: SimulateRequest):
                 attenuation=request.attenuation,
                 distance_multiplier=request.distance_multiplier,
                 target_fidelity=request.target_fidelity,
-                memo_size=request.memo_size
+                memo_size=request.memo_size,
+                key_size=request.key_size
             )
         )
         

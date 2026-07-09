@@ -28,8 +28,9 @@ function Dashboard() {
   // Simulation Parameters
   const [attenuation, setAttenuation] = useState(0.0002);
   const [distanceMultiplier, setDistanceMultiplier] = useState(1.0);
-  const [targetFidelity, setTargetFidelity] = useState(0.85);
-  const [memoSize, setMemoSize] = useState(50);
+  const [targetFidelity, setTargetFidelity] = useState('0.85');
+  const [memoSize, setMemoSize] = useState('50');
+  const [keySize, setKeySize] = useState(256);
   const [showSettings, setShowSettings] = useState(false);
 
   const runSimulation = useCallback(async (eavesdropperActive) => {
@@ -47,6 +48,7 @@ function Dashboard() {
         memo_size: parseInt(memoSize, 10),
         network_code: networkCode,
         protocol: protocol,
+        key_size: parseInt(keySize)
       });
       setSimulationData(res.data);
       setSimHistory(prev => [
@@ -64,7 +66,7 @@ function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [attenuation, distanceMultiplier, targetFidelity, memoSize, networkCode, protocol]);
+  }, [attenuation, distanceMultiplier, targetFidelity, memoSize, networkCode, protocol, keySize]);
 
   const createNetwork = async () => {
     try {
@@ -83,9 +85,13 @@ function Dashboard() {
         setJoinedHubs(res.data.hubs);
         setNetworkStatus(res.data);
         
-        if (res.data.has_result && !simulationData) {
-          const resultRes = await axios.get(`${API_BASE}/api/network/${networkCode}/result`);
-          setSimulationData(resultRes.data);
+        if (res.data.has_result) {
+          if (!simulationData) {
+            const resultRes = await axios.get(`${API_BASE}/api/network/${networkCode}/result`);
+            setSimulationData(resultRes.data);
+          }
+        } else {
+          setSimulationData(null);
         }
       } catch (e) {
         console.error(e);
@@ -381,6 +387,18 @@ function Dashboard() {
                      </button>
                    )}
                  </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Bit Size</label>
+                  <select
+                    value={keySize}
+                    onChange={(e) => setKeySize(e.target.value)}
+                    className="w-full bg-surface-900 border border-white/10 rounded-xl p-2 text-white text-sm focus:border-neon-cyan"
+                  >
+                    <option value={128}>128-bit AES</option>
+                    <option value={256}>256-bit AES</option>
+                    <option value={512}>512-bit AES</option>
+                  </select>
+                </div>
                </div>
             </div>
           </div>

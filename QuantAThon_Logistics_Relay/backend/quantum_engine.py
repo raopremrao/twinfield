@@ -160,21 +160,22 @@ def _compute_qber(fidelity: float) -> float:
     return max(0.0, min(0.5, qber))
 
 
-def _derive_conference_key(fidelities: list, sim_seed: int) -> bytes:
-    """
-    Derive a 256-bit Conference Key from the entanglement fidelities.
-    In a real CKA protocol, this key would be distilled from correlated
-    measurement outcomes. Here we simulate the key generation using
-    a hash-based KDF seeded by the simulation results.
-    """
-    key_material = f"CKA:{sim_seed}:" + ":".join(f"{f:.6f}" for f in fidelities)
-    key = hashlib.sha256(key_material.encode()).digest()
-    return key
+def _derive_conference_key(fidelities: list, sim_seed: int, key_size: int = 256) -> bytes:
+    """Derives a deterministic key based on shared channel fidelities and time seed."""
+    raw_material = f"CKA_MATERIAL_{sim_seed}_" + "_".join([f"{f:.4f}" for f in fidelities])
+    
+    kdf = HKDF(
+        algorithm=hashes.SHA256(),
+        length=key_size // 8,
+        salt=b"quantathon-2026-salt",
+        info=b"quantum-cka-key-expansion",
+    )
+    return kdf.derive(raw_material.encode())
 
 
-def _derive_qss_shares(fidelities: list, spoke_names: list, sim_seed: int) -> tuple[str, dict]:
+def _derive_qss_shares(fidelities: list, spoke_names: list, sim_seed: int, key_size: int = 256) -> tuple[str, dict]:
     """
-    Derives a 256-bit master secret and N shares using Quantum Secret Sharing.
+    Implements N-party Quantum Secret Sharing (QSS).
     Uses the quantum entanglement fidelities as physical entropy.
     Requires all N shares to reconstruct the master secret (N-out-of-N threshold).
     """
@@ -212,7 +213,8 @@ def run_simulation(
     attenuation: float = FIBER_ATTENUATION,
     distance_multiplier: float = 1.0,
     target_fidelity: float = ENT_TARGET_FIDELITY,
-    memo_size: int = MEMO_SIZE
+    memo_size: int = MEMO_SIZE,
+    key_size: int = 256
 ) -> dict:
     """
     Execute the full quantum network simulation.
@@ -256,7 +258,8 @@ def run_simulation(
             attenuation=attenuation,
             distance_multiplier=distance_multiplier,
             target_fidelity=target_fidelity,
-            memo_size=memo_size
+            memo_size=memo_size,
+            key_size=key_size
         )
 
     # Get router nodes
@@ -365,10 +368,10 @@ def run_simulation(
 
     # Key Distribution Protocol
     if protocol == "QSS":
-        master_secret, secret_shares = _derive_qss_shares(link_fidelities, spoke_names, int(time.time()))
+        master_secret, secret_shares = _derive_qss_shares(link_fidelities, spoke_names, int(time.time()), key_size)
         conference_key_hex = master_secret
     else:
-        conference_key_hex = _derive_conference_key(link_fidelities, int(time.time())).hex()
+        conference_key_hex = _derive_conference_key(link_fidelities, int(time.time()), key_size).hex()
         secret_shares = {}
 
     avg_qber = np.mean([_compute_qber(f) for f in link_fidelities])
@@ -415,7 +418,7 @@ def run_simulation(
         "security_threshold": SECURITY_THRESHOLD,
         "eavesdropper_active": eavesdropper_active,
         "eavesdropper_detected": eavesdropper_detected,
-        "key_bits": 256,
+        "key_bits": key_size,
         "protocol": protocol,
     }
 
@@ -439,7 +442,8 @@ def _run_simplified_simulation(
     attenuation: float = FIBER_ATTENUATION,
     distance_multiplier: float = 1.0,
     target_fidelity: float = ENT_TARGET_FIDELITY,
-    memo_size: int = MEMO_SIZE
+    memo_size: int = MEMO_SIZE,
+    key_size: int = 256
 ) -> dict:
     """
     Simplified fallback simulation using SeQUeNCe's core Timeline
@@ -648,7 +652,7 @@ def _run_simplified_simulation(
         "security_threshold": SECURITY_THRESHOLD,
         "eavesdropper_active": eavesdropper_active,
         "eavesdropper_detected": eavesdropper_detected,
-        "key_bits": 256,
+        "key_bits": key_size,
         "protocol": protocol,
     }
 

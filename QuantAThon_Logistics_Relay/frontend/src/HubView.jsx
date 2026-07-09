@@ -18,6 +18,8 @@ export default function HubView() {
   
   const [networkStatus, setNetworkStatus] = useState(null);
   const [simulationData, setSimulationData] = useState(null);
+  const [keySize, setKeySize] = useState(256);
+  const [protocol, setProtocol] = useState("CKA");
 
   const joinNetwork = async () => {
     if (!networkCode || !hubName) return;
@@ -42,9 +44,13 @@ export default function HubView() {
         const res = await axios.get(`${API_BASE}/api/network/${networkCode}/status?hub_id=${assignedHubId}`);
         setNetworkStatus(res.data);
         
-        if (res.data.has_result && !simulationData) {
-          const resultRes = await axios.get(`${API_BASE}/api/network/${networkCode}/result`);
-          setSimulationData(resultRes.data);
+        if (res.data.has_result) {
+          if (!simulationData) {
+            const resultRes = await axios.get(`${API_BASE}/api/network/${networkCode}/result`);
+            setSimulationData(resultRes.data);
+          }
+        } else {
+          setSimulationData(null);
         }
       } catch (err) {
         console.error(err);
@@ -62,8 +68,9 @@ export default function HubView() {
         target_fidelity: 0.85,
         memo_size: 50,
         network_code: networkCode,
-        protocol: "QSS",
-        started_by: assignedHubId
+        protocol: protocol,
+        started_by: assignedHubId,
+        key_size: parseInt(keySize)
       });
     } catch (err) {
       console.error("Failed to start simulation", err);
@@ -99,7 +106,7 @@ export default function HubView() {
             </button>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 w-full sm:w-auto justify-center">
               <div className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse"></div>
-              <span className="text-[10px] font-mono text-neon-cyan tracking-wider">{isJoined ? "CKA LINK SECURE" : "AWAITING PAIRING"}</span>
+              <span className="text-[10px] font-mono text-neon-cyan tracking-wider">{isJoined ? "QUANTUM LINK ACTIVE" : "AWAITING PAIRING"}</span>
             </div>
           </div>
 
@@ -155,20 +162,52 @@ export default function HubView() {
             
             <div className="mb-8 mt-4">
                <h2 className="text-xl font-bold text-white mb-2">{networkStatus?.status || "Waiting for Supervisor..."}</h2>
-               {networkStatus?.started_by && (
+               {networkStatus?.started_by && !simulationData && (
                  <p className="text-sm text-neon-violet">Key generation initiated by: <span className="font-bold">{networkStatus.started_by}</span></p>
+               )}
+               {simulationData && (
+                 <p className="text-sm text-neon-cyan font-bold">Quantum Link Synchronized</p>
                )}
             </div>
 
             {!simulationData ? (
-              <button
-                onClick={startKeyGeneration}
-                disabled={networkStatus?.status?.includes("Generating")}
-                className="btn-quantum w-full max-w-sm mx-auto bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan/30 flex items-center justify-center gap-2 py-4 text-lg disabled:opacity-50 shadow-[0_0_20px_rgba(0,240,255,0.15)] transition-all"
-              >
-                <Lock size={20} />
-                {networkStatus?.status?.includes("Generating") ? "Physics Simulation Running..." : "Start Generating Secret Key"}
-              </button>
+              <div className="max-w-sm mx-auto">
+                <div className="grid grid-cols-2 gap-4 mb-4 text-left">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Protocol</label>
+                    <select 
+                      value={protocol}
+                      onChange={e => setProtocol(e.target.value)}
+                      disabled={networkStatus?.status?.includes("Generating")}
+                      className="w-full bg-surface-900 border border-white/10 rounded-xl p-3 text-white focus:border-neon-cyan"
+                    >
+                      <option value="CKA">CKA (Identical Keys)</option>
+                      <option value="QSS">QSS (Split Shares)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Bit Size</label>
+                    <select 
+                      value={keySize}
+                      onChange={e => setKeySize(e.target.value)}
+                      disabled={networkStatus?.status?.includes("Generating")}
+                      className="w-full bg-surface-900 border border-white/10 rounded-xl p-3 text-white focus:border-neon-cyan"
+                    >
+                      <option value={128}>128-bit AES</option>
+                      <option value={256}>256-bit AES</option>
+                      <option value={512}>512-bit AES</option>
+                    </select>
+                  </div>
+                </div>
+                <button
+                  onClick={startKeyGeneration}
+                  disabled={networkStatus?.status?.includes("Generating")}
+                  className="btn-quantum w-full bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan/30 flex items-center justify-center gap-2 py-4 text-lg disabled:opacity-50 shadow-[0_0_20px_rgba(0,240,255,0.15)] transition-all"
+                >
+                  <Lock size={20} />
+                  {networkStatus?.status?.includes("Generating") ? "Physics Simulation Running..." : "Start Generating Secret Key"}
+                </button>
+              </div>
             ) : (
               <div className="text-left bg-surface-900 border border-neon-amber/20 p-6 rounded-xl shadow-[0_0_15px_rgba(251,191,36,0.1)]">
                 <div className="flex items-center gap-3 mb-4">
@@ -198,6 +237,13 @@ export default function HubView() {
                     </p>
                   </div>
                 )}
+                
+                <button
+                  onClick={startKeyGeneration}
+                  className="w-full mt-6 py-3 rounded-xl border border-white/20 text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Lock size={16} /> Generate New Key
+                </button>
               </div>
             )}
           </div>
