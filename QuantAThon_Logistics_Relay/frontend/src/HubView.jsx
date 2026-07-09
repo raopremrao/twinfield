@@ -18,6 +18,7 @@ export default function HubView() {
   
   const [networkStatus, setNetworkStatus] = useState(null);
   const [simulationData, setSimulationData] = useState(null);
+  const [networkVersion, setNetworkVersion] = useState(0);
   const [keySize, setKeySize] = useState(256);
   const [protocol, setProtocol] = useState("CKA");
 
@@ -45,9 +46,10 @@ export default function HubView() {
         setNetworkStatus(res.data);
         
         if (res.data.has_result) {
-          if (!simulationData) {
+          if (!simulationData || res.data.version !== networkVersion) {
             const resultRes = await axios.get(`${API_BASE}/api/network/${networkCode}/result`);
             setSimulationData(resultRes.data);
+            setNetworkVersion(res.data.version);
           }
         } else {
           setSimulationData(null);

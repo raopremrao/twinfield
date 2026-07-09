@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 
 function Dashboard() {
   const [simulationData, setSimulationData] = useState(null);
+  const [networkVersion, setNetworkVersion] = useState(0);
   const [encryptedData, setEncryptedData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -86,9 +87,10 @@ function Dashboard() {
         setNetworkStatus(res.data);
         
         if (res.data.has_result) {
-          if (!simulationData) {
+          if (!simulationData || res.data.version !== networkVersion) {
             const resultRes = await axios.get(`${API_BASE}/api/network/${networkCode}/result`);
             setSimulationData(resultRes.data);
+            setNetworkVersion(res.data.version);
           }
         } else {
           setSimulationData(null);

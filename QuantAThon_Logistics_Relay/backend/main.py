@@ -202,7 +202,8 @@ async def get_network_status(code: str, hub_id: str = None):
         "hubs": net["hubs"],
         "status": net["status"],
         "started_by": net["started_by"],
-        "has_result": net["last_simulation"] is not None
+        "has_result": net["last_simulation"] is not None,
+        "version": net.get("version", 0)
     }
 
 @app.get("/api/network/{code}/result", tags=["Network"], response_model=SimulateResponse)
@@ -256,6 +257,7 @@ async def simulate(request: SimulateRequest):
         if request.network_code and request.network_code in networks:
             networks[request.network_code]["last_simulation"] = result
             networks[request.network_code]["status"] = "Key Distribution Complete"
+            networks[request.network_code]["version"] = networks[request.network_code].get("version", 0) + 1
             
         return SimulateResponse(**result)
     except Exception as e:
