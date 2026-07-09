@@ -22,6 +22,7 @@ function Dashboard() {
   const [simHistory, setSimHistory] = useState([]);
   const [networkCode, setNetworkCode] = useState(null);
   const [joinedHubs, setJoinedHubs] = useState([]);
+  const [protocol, setProtocol] = useState('CKA'); // 'CKA' or 'QSS'
 
   // Simulation Parameters
   const [attenuation, setAttenuation] = useState(0.0002);
@@ -44,6 +45,7 @@ function Dashboard() {
         target_fidelity: parseFloat(targetFidelity),
         memo_size: parseInt(memoSize, 10),
         network_code: networkCode,
+        protocol: protocol,
       });
       setSimulationData(res.data);
       setSimHistory(prev => [
@@ -61,7 +63,7 @@ function Dashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [attenuation, distanceMultiplier, targetFidelity, memoSize, networkCode]);
+  }, [attenuation, distanceMultiplier, targetFidelity, memoSize, networkCode, protocol]);
 
   const createNetwork = async () => {
     try {
@@ -156,6 +158,29 @@ function Dashboard() {
             </div>
 
             <div className="flex items-center gap-3">
+              <div className="flex bg-surface-900 rounded-xl p-1 border border-white/5 mr-2">
+                <button
+                  onClick={() => setProtocol('CKA')}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    protocol === 'CKA' 
+                      ? 'bg-neon-cyan/20 text-neon-cyan' 
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                  }`}
+                >
+                  CKA
+                </button>
+                <button
+                  onClick={() => setProtocol('QSS')}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    protocol === 'QSS' 
+                      ? 'bg-neon-amber/20 text-neon-amber' 
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                  }`}
+                >
+                  QSS
+                </button>
+              </div>
+
               {!networkCode ? (
                 <button
                   onClick={createNetwork}

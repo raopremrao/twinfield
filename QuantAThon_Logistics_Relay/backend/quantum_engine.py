@@ -172,8 +172,42 @@ def _derive_conference_key(fidelities: list, sim_seed: int) -> bytes:
     return key
 
 
+def _derive_qss_shares(fidelities: list, spoke_names: list, sim_seed: int) -> tuple[str, dict]:
+    """
+    Derives a 256-bit master secret and N shares using Quantum Secret Sharing.
+    Uses the quantum entanglement fidelities as physical entropy.
+    Requires all N shares to reconstruct the master secret (N-out-of-N threshold).
+    """
+    # Master secret distilled from global entanglement state
+    master_material = f"QSS:MASTER:{sim_seed}:" + ":".join(f"{f:.6f}" for f in fidelities)
+    master_secret = hashlib.sha256(master_material.encode()).digest()
+    
+    shares = {}
+    current_xor = bytearray(32)
+    
+    # Generate N-1 shares driven by the physical quantum channel noise of each link
+    for i in range(len(spoke_names) - 1):
+        spoke = spoke_names[i]
+        fid = fidelities[i] if i < len(fidelities) else 0.5
+        share_material = f"QSS:SHARE:{spoke}:{sim_seed}:{fid:.6f}"
+        share = bytearray(hashlib.sha256(share_material.encode()).digest())
+        shares[spoke] = share.hex()
+        for j in range(32):
+            current_xor[j] ^= share[j]
+            
+    # The final share ensures that XORing all shares recovers the master secret exactly
+    final_spoke = spoke_names[-1]
+    final_share = bytearray(32)
+    for j in range(32):
+        final_share[j] = master_secret[j] ^ current_xor[j]
+    shares[final_spoke] = final_share.hex()
+    
+    return master_secret.hex(), shares
+
+
 def run_simulation(
     spoke_names: list = None,
+    protocol: str = "CKA",
     eavesdropper_active: bool = False,
     attenuation: float = FIBER_ATTENUATION,
     distance_multiplier: float = 1.0,
@@ -375,13 +409,16 @@ def run_simulation(
         "eavesdropper_active": eavesdropper_active,
         "eavesdropper_detected": eavesdropper_detected,
         "key_bits": 256,
+        "protocol": protocol,
     }
 
     return {
         "topology": topology,
         "fidelity_data": fidelity_series,
         "qber_data": qber_series,
-        "conference_key_hex": conference_key.hex(),
+        "conference_key_hex": conference_key_hex,
+        "secret_shares": secret_shares,
+        "protocol": protocol,
         "eavesdropper_detected": eavesdropper_detected,
         "bsm_stats": bsm_stats,
         "summary": summary,
@@ -390,6 +427,7 @@ def run_simulation(
 
 def _run_simplified_simulation(
     spoke_names: list,
+    protocol: str = "CKA",
     eavesdropper_active: bool = False,
     attenuation: float = FIBER_ATTENUATION,
     distance_multiplier: float = 1.0,
@@ -556,7 +594,13 @@ def _run_simplified_simulation(
         fidelity_series.append(point_fid)
         qber_series.append(point_qber)
 
-    conference_key = _derive_conference_key(link_fidelities, int(time.time()))
+    if protocol == "QSS":
+        master_secret, secret_shares = _derive_qss_shares(link_fidelities, spoke_names, int(time.time()))
+        conference_key_hex = master_secret
+    else:
+        conference_key_hex = _derive_conference_key(link_fidelities, int(time.time())).hex()
+        secret_shares = {}
+
     avg_qber = np.mean([_compute_qber(f) for f in link_fidelities])
     SECURITY_THRESHOLD = 0.11
     eavesdropper_detected = bool(avg_qber > SECURITY_THRESHOLD)
@@ -598,13 +642,16 @@ def _run_simplified_simulation(
         "eavesdropper_active": eavesdropper_active,
         "eavesdropper_detected": eavesdropper_detected,
         "key_bits": 256,
+        "protocol": protocol,
     }
 
     return {
         "topology": topology,
         "fidelity_data": fidelity_series,
         "qber_data": qber_series,
-        "conference_key_hex": conference_key.hex(),
+        "conference_key_hex": conference_key_hex,
+        "secret_shares": secret_shares,
+        "protocol": protocol,
         "eavesdropper_detected": eavesdropper_detected,
         "bsm_stats": bsm_stats,
         "summary": summary,

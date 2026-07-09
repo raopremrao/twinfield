@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
 import time
+import secrets
 
 from quantum_engine import run_simulation
 from crypto_utils import encrypt_manifest
@@ -32,7 +33,7 @@ app = FastAPI(
         "for multi-party secure logistics data sharing."
     ),
     version="1.0.0",
-    contact={"name": "Prem", "url": "https://github.com/prem"},
+    contact={"name": "Prem", "url": "https://github.com/raopremrao"},
 )
 
 # CORS for React frontend
@@ -79,6 +80,10 @@ class SimulateRequest(BaseModel):
         default=None,
         description="Optional network code for multi-party simulation"
     )
+    protocol: str = Field(
+        default="CKA",
+        description="Quantum cryptography protocol: 'CKA' (Conference Key Agreement) or 'QSS' (Quantum Secret Sharing)"
+    )
 
 
 class SimulateResponse(BaseModel):
@@ -86,6 +91,8 @@ class SimulateResponse(BaseModel):
     fidelity_data: list
     qber_data: list
     conference_key_hex: str
+    secret_shares: dict
+    protocol: str
     eavesdropper_detected: bool
     bsm_stats: list
     summary: dict
@@ -180,6 +187,7 @@ async def simulate(request: SimulateRequest):
     try:
         result = run_simulation(
             spoke_names=spoke_names,
+            protocol=request.protocol,
             eavesdropper_active=request.eavesdropper_active,
             attenuation=request.attenuation,
             distance_multiplier=request.distance_multiplier,

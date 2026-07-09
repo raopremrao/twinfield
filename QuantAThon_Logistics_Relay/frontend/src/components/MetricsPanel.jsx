@@ -107,17 +107,24 @@ export default function MetricsPanel({ simulationData, isAttackMode }) {
           </p>
         </div>
 
-        {/* Conference Key */}
+        {/* Conference Key / QSS */}
         <div className="glass-panel p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Activity size={14} className="text-neon-violet" />
-            <span className="text-xs text-slate-400 uppercase tracking-wider">CKA Key</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Activity size={14} className="text-neon-violet" />
+              <span className="text-xs text-slate-400 uppercase tracking-wider">
+                {simulationData?.protocol === 'QSS' ? 'QSS Master Secret' : 'CKA Key'}
+              </span>
+            </div>
+            {simulationData?.protocol && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white font-bold tracking-widest">{simulationData.protocol}</span>
+            )}
           </div>
           <p className="text-sm font-mono text-neon-violet truncate">
             {simulationData?.conference_key_hex?.slice(0, 16) || '—'}…
           </p>
           <p className="text-[10px] text-slate-500 mt-1">
-            256-bit AES-GCM
+            256-bit AES-GCM {simulationData?.protocol === 'QSS' ? '(Requires N Shares)' : ''}
           </p>
         </div>
       </div>
@@ -223,6 +230,26 @@ export default function MetricsPanel({ simulationData, isAttackMode }) {
                   {bsm.measurements_performed}
                 </p>
                 <p className="text-[10px] text-slate-500">measurements</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* QSS Shares */}
+      {simulationData?.protocol === 'QSS' && simulationData?.secret_shares && (
+        <div className="glass-panel p-5">
+          <p className="section-title">Quantum Secret Shares (N-out-of-N Threshold)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Object.entries(simulationData.secret_shares).map(([hub, share]) => (
+              <div key={hub} className="bg-surface-900 rounded-xl p-4 border border-neon-amber/20 shadow-[0_0_15px_rgba(251,191,36,0.05)]">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-neon-amber animate-pulse"></div>
+                  <p className="text-xs text-neon-amber font-semibold uppercase tracking-wider truncate">{hub}</p>
+                </div>
+                <p className="text-[10px] font-mono text-slate-400 break-all leading-tight bg-surface-900/50 p-2 rounded border border-white/5">
+                  {share.slice(0, 32)}<br/>{share.slice(32)}
+                </p>
               </div>
             ))}
           </div>
