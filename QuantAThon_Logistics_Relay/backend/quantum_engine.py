@@ -40,11 +40,11 @@ CHANNEL_DISTANCES = {
 }
 
 MEMO_SIZE = 50           # Quantum memories per router
-SIM_STOP_TIME = int(2e12)  # 2 ms in picoseconds
+SIM_STOP_TIME = int(5e10)  # 50 ms in picoseconds
 
 # Entanglement request parameters
-ENT_START_TIME = int(1e11)    # 100 ns start
-ENT_END_TIME = int(1.5e12)    # 1.5 ms end
+ENT_START_TIME = int(1e10)    # 10 ms start
+ENT_END_TIME = int(4e10)    # 40 ms end
 ENT_MEMO_SIZE = 10            # memories to use
 ENT_TARGET_FIDELITY = 0.85    # target fidelity
 

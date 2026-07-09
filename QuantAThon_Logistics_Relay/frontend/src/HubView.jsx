@@ -39,7 +39,7 @@ export default function HubView() {
     
     const interval = setInterval(async () => {
       try {
-        const res = await axios.get(`${API_BASE}/api/network/${networkCode}/status`);
+        const res = await axios.get(`${API_BASE}/api/network/${networkCode}/status?hub_id=${assignedHubId}`);
         setNetworkStatus(res.data);
         
         if (res.data.has_result && !simulationData) {
@@ -70,6 +70,19 @@ export default function HubView() {
     }
   };
 
+  const leaveNetwork = async () => {
+    if (isJoined && networkCode) {
+      try {
+        await axios.post(`${API_BASE}/api/network/${networkCode}/leave`, {
+          hub_name: hubName
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-quantum-mesh bg-grid flex items-center justify-center p-4 sm:p-6">
       <div className="max-w-2xl w-full">
@@ -79,7 +92,7 @@ export default function HubView() {
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
             <button 
-              onClick={() => navigate('/')}
+              onClick={leaveNetwork}
               className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs font-medium uppercase tracking-wider"
             >
               <ArrowLeft size={14} /> NOC Dashboard

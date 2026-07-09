@@ -161,18 +161,39 @@ async def join_network(code: str, req: JoinNetworkRequest):
     if not any(h["id"] == hub_id for h in networks[code]["hubs"]):
         networks[code]["hubs"].append({
             "id": hub_id,
-            "joined_at": time.time()
+            "joined_at": time.time(),
+            "last_seen": time.time()
         })
         
     return {"hub_id": hub_id, "status": "joined"}
 
+@app.post("/api/network/{code}/leave", tags=["Network"])
+async def leave_network(code: str, req: JoinNetworkRequest):
+    """Explicitly leave a network."""
+    if code in networks:
+        hub_id = f"Hub_{req.hub_name}"
+        networks[code]["hubs"] = [h for h in networks[code]["hubs"] if h["id"] != hub_id]
+    return {"status": "left"}
+
 @app.get("/api/network/{code}/status", tags=["Network"])
-async def get_network_status(code: str):
-    """Gets the current status and joined hubs of a network."""
+async def get_network_status(code: str, hub_id: str = None):
+    """Gets the current status and joined hubs of a network. Uses hub_id for heartbeat."""
     if code not in networks:
         raise HTTPException(status_code=404, detail="Network code not found.")
     
     net = networks[code]
+    current_time = time.time()
+    
+    # Update heartbeat
+    if hub_id:
+        for h in net["hubs"]:
+            if h["id"] == hub_id:
+                h["last_seen"] = current_time
+                break
+                
+    # Remove hubs that haven't sent a heartbeat in 10 seconds
+    net["hubs"] = [h for h in net["hubs"] if current_time - h.get("last_seen", current_time) < 10]
+    
     return {
         "hubs": net["hubs"],
         "status": net["status"],
