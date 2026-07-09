@@ -1,0 +1,7 @@
+sequence
+fastapi
+uvicorn
+pydantic
+cryptography
+networkx
+numpy
