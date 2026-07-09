@@ -47,9 +47,12 @@ app.add_middleware(
 # ─── In-Memory State ────────────────────────────────────────────────────────
 
 _last_simulation_result = None
+networks = {}  # Format: { "1234": { "hubs": ["Hub_Phone1", "Hub_Phone2"], "supervisor_active": True } }
 
 
-# ─── Request/Response Models ────────────────────────────────────────────────
+# ─── Application Startup ────────────────────────────────────────────────────
+
+_start_time = time.time()
 
 class SimulateRequest(BaseModel):
     eavesdropper_active: bool = Field(
@@ -71,6 +74,10 @@ class SimulateRequest(BaseModel):
     memo_size: int = Field(
         default=50,
         description="Number of quantum memories per router"
+    )
+    network_code: Optional[str] = Field(
+        default=None,
+        description="Optional network code for multi-party simulation"
     )
 
 
@@ -115,6 +122,39 @@ async def health_check():
         uptime_ms=round((time.time() - _start_time) * 1000, 2),
     )
 
+class JoinNetworkRequest(BaseModel):
+    hub_name: str
+
+@app.post("/api/network/create", tags=["Network"])
+async def create_network():
+    """Creates a new quantum simulation network with a 4-digit code."""
+    code = f"{secrets.randbelow(10000):04d}"
+    while code in networks:
+        code = f"{secrets.randbelow(10000):04d}"
+    
+    networks[code] = {"hubs": [], "supervisor_active": True}
+    return {"network_code": code}
+
+@app.post("/api/network/{code}/join", tags=["Network"])
+async def join_network(code: str, req: JoinNetworkRequest):
+    """Joins a specific network by code."""
+    if code not in networks:
+        raise HTTPException(status_code=404, detail="Network code not found.")
+    
+    hub_id = f"Hub_{req.hub_name}"
+    if hub_id not in networks[code]["hubs"]:
+        networks[code]["hubs"].append(hub_id)
+        
+    return {"hub_id": hub_id, "status": "joined"}
+
+@app.get("/api/network/{code}/status", tags=["Network"])
+async def get_network_status(code: str):
+    """Gets the current status and joined hubs of a network."""
+    if code not in networks:
+        raise HTTPException(status_code=404, detail="Network code not found.")
+    
+    return {"hubs": networks[code]["hubs"]}
+
 
 @app.post("/api/simulate", response_model=SimulateResponse, tags=["Simulation"])
 async def simulate(request: SimulateRequest):
@@ -133,8 +173,13 @@ async def simulate(request: SimulateRequest):
     """
     global _last_simulation_result
 
+    spoke_names = None
+    if request.network_code and request.network_code in networks:
+        spoke_names = networks[request.network_code]["hubs"]
+
     try:
         result = run_simulation(
+            spoke_names=spoke_names,
             eavesdropper_active=request.eavesdropper_active,
             attenuation=request.attenuation,
             distance_multiplier=request.distance_multiplier,

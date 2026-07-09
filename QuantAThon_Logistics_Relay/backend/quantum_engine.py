@@ -49,7 +49,7 @@ ENT_MEMO_SIZE = 10            # memories to use
 ENT_TARGET_FIDELITY = 0.85    # target fidelity
 
 
-def _build_network_config(eavesdropper_active: bool = False, attenuation: float = FIBER_ATTENUATION, distance_multiplier: float = 1.0, memo_size: int = MEMO_SIZE) -> dict:
+def _build_network_config(spoke_names: list, eavesdropper_active: bool = False, attenuation: float = FIBER_ATTENUATION, distance_multiplier: float = 1.0, memo_size: int = MEMO_SIZE) -> dict:
     """
     Build SeQUeNCe RouterNetTopo JSON config dictionary for the
     hub-and-spoke MDI-QKD relay network.
@@ -67,7 +67,7 @@ def _build_network_config(eavesdropper_active: bool = False, attenuation: float 
     cchannels = []
 
     # ── Spoke nodes (QuantumRouters) ──
-    for i, spoke in enumerate(SPOKE_NAMES):
+    for i, spoke in enumerate(spoke_names):
         nodes.append({
             "name": spoke,
             "type": "QuantumRouter",
@@ -82,10 +82,10 @@ def _build_network_config(eavesdropper_active: bool = False, attenuation: float 
     # connected through the central relay concept.
     bsm_nodes = []
     pair_index = 0
-    for i in range(len(SPOKE_NAMES)):
-        for j in range(i + 1, len(SPOKE_NAMES)):
-            spoke_a = SPOKE_NAMES[i]
-            spoke_b = SPOKE_NAMES[j]
+    for i in range(len(spoke_names)):
+        for j in range(i + 1, len(spoke_names)):
+            spoke_a = spoke_names[i]
+            spoke_b = spoke_names[j]
             bsm_name = f"BSM_{spoke_a}_{spoke_b}"
             bsm_nodes.append((bsm_name, spoke_a, spoke_b))
 
@@ -96,8 +96,8 @@ def _build_network_config(eavesdropper_active: bool = False, attenuation: float 
             })
 
             # Quantum channels: each spoke sends photons to the BSM node
-            dist_a = int(CHANNEL_DISTANCES[spoke_a] * distance_multiplier)
-            dist_b = int(CHANNEL_DISTANCES[spoke_b] * distance_multiplier)
+            dist_a = int(CHANNEL_DISTANCES.get(spoke_a, 100_000) * distance_multiplier)
+            dist_b = int(CHANNEL_DISTANCES.get(spoke_b, 100_000) * distance_multiplier)
             avg_dist = (dist_a + dist_b) // 2
 
             qchannels.append({
@@ -125,7 +125,7 @@ def _build_network_config(eavesdropper_active: bool = False, attenuation: float 
 
             # Classical channels: BSM ↔ each spoke (for BSM result broadcasting)
             for spoke in [spoke_a, spoke_b]:
-                dist = int(CHANNEL_DISTANCES[spoke] * distance_multiplier)
+                dist = int(CHANNEL_DISTANCES.get(spoke, 100_000) * distance_multiplier)
                 cchannels.append({
                     "source": bsm_name,
                     "destination": spoke,
@@ -173,6 +173,7 @@ def _derive_conference_key(fidelities: list, sim_seed: int) -> bytes:
 
 
 def run_simulation(
+    spoke_names: list = None,
     eavesdropper_active: bool = False,
     attenuation: float = FIBER_ATTENUATION,
     distance_multiplier: float = 1.0,
@@ -197,8 +198,12 @@ def run_simulation(
     """
     start_wall = time.time()
 
+    if spoke_names is None or len(spoke_names) < 2:
+        spoke_names = SPOKE_NAMES
+
     # Build and load the network
     config = _build_network_config(
+        spoke_names,
         eavesdropper_active,
         attenuation=attenuation,
         distance_multiplier=distance_multiplier,
@@ -211,6 +216,7 @@ def run_simulation(
     except Exception as e:
         # Fallback: if RouterNetTopo fails, run a simplified simulation
         return _run_simplified_simulation(
+            spoke_names,
             eavesdropper_active,
             attenuation=attenuation,
             distance_multiplier=distance_multiplier,
@@ -260,7 +266,7 @@ def run_simulation(
     fidelity_data = []
     qber_data = []
     link_fidelities = []
-    rng = np.random.default_rng(42 if not eavesdropper_active else 13)
+    rng = np.random.default_rng()
 
     for router in routers:
         memo_array = router.get_components_by_type("MemoryArray")
@@ -280,10 +286,17 @@ def run_simulation(
                 base_fid = 0.60 if eavesdropper_active else 0.99
                 avg_fid = base_fid * (0.90 + rng.random() * 0.08)
 
+            # Apply physical penalty based on user-tweaked parameters
+            # Higher distance and attenuation physically degrade the quantum state
+            penalty = (attenuation / 0.0002) * distance_multiplier * 0.04
+            avg_fid = max(0.2, avg_fid - penalty)
+
             link_fidelities.append(avg_fid)
         else:
             base_fid = 0.60 if eavesdropper_active else 0.99
             avg_fid = base_fid * (0.90 + rng.random() * 0.08)
+            penalty = (attenuation / 0.0002) * distance_multiplier * 0.04
+            avg_fid = max(0.2, avg_fid - penalty)
             link_fidelities.append(avg_fid)
 
     # Generate time-series data for visualization
@@ -298,7 +311,7 @@ def run_simulation(
         point_fid = {"time": round(t_ms, 3)}
         point_qber = {"time": round(t_ms, 3)}
 
-        for k, spoke in enumerate(SPOKE_NAMES):
+        for k, spoke in enumerate(spoke_names):
             base = link_fidelities[k] if k < len(link_fidelities) else 0.95
             # Add realistic temporal noise
             noise = rng.normal(0, 0.008 if not eavesdropper_active else 0.04)
@@ -316,7 +329,7 @@ def run_simulation(
         qber_series.append(point_qber)
 
     # Conference Key Agreement
-    conference_key = _derive_conference_key(link_fidelities, 42)
+    conference_key = _derive_conference_key(link_fidelities, int(time.time()))
     avg_qber = np.mean([_compute_qber(f) for f in link_fidelities])
 
     # Security threshold: QBER > 11% indicates eavesdropping (BB84 bound)
@@ -327,7 +340,7 @@ def run_simulation(
     topology = {
         "nodes": [
             {"id": s, "type": "spoke", "label": s.replace("Hub_", ""), "x": 0, "y": 0}
-            for s in SPOKE_NAMES
+            for s in spoke_names
         ] + [
             {"id": RELAY_NAME, "type": "relay", "label": "MDI Relay (Untrusted)", "x": 0, "y": 0}
         ],
@@ -335,10 +348,10 @@ def run_simulation(
             {
                 "source": spoke,
                 "target": RELAY_NAME,
-                "distance_km": (CHANNEL_DISTANCES[spoke] * distance_multiplier) / 1000,
+                "distance_km": (CHANNEL_DISTANCES.get(spoke, 100_000) * distance_multiplier) / 1000,
                 "attenuation_db_km": attenuation * 1000,
             }
-            for spoke in SPOKE_NAMES
+            for spoke in spoke_names
         ],
     }
 
@@ -376,6 +389,7 @@ def run_simulation(
 
 
 def _run_simplified_simulation(
+    spoke_names: list,
     eavesdropper_active: bool = False,
     attenuation: float = FIBER_ATTENUATION,
     distance_multiplier: float = 1.0,
@@ -392,11 +406,11 @@ def _run_simplified_simulation(
     # Create timeline with ket vector formalism
     tl = Timeline(stop_time=SIM_STOP_TIME, formalism="ket_vector")
 
-    rng = np.random.default_rng(42 if not eavesdropper_active else 13)
+    rng = np.random.default_rng()
 
     # Create QuantumRouter nodes
     routers = []
-    for i, name in enumerate(SPOKE_NAMES):
+    for i, name in enumerate(spoke_names):
         meas_fid = 0.65 if eavesdropper_active else 0.98
         router = QuantumRouter(name, tl, memo_size=memo_size, seed=100 + i,
                                meas_fid=meas_fid)
@@ -405,11 +419,11 @@ def _run_simplified_simulation(
     # Create BSM nodes for each pair
     bsm_nodes = []
     pair_names = []
-    for i in range(len(SPOKE_NAMES)):
-        for j in range(i + 1, len(SPOKE_NAMES)):
-            bsm_name = f"BSM_{SPOKE_NAMES[i]}_{SPOKE_NAMES[j]}"
+    for i in range(len(spoke_names)):
+        for j in range(i + 1, len(spoke_names)):
+            bsm_name = f"BSM_{spoke_names[i]}_{spoke_names[j]}"
             bsm = BSMNode(bsm_name, tl,
-                          other_nodes=[SPOKE_NAMES[i], SPOKE_NAMES[j]],
+                          other_nodes=[spoke_names[i], spoke_names[j]],
                           seed=200 + len(bsm_nodes))
             bsm_nodes.append(bsm)
             pair_names.append((SPOKE_NAMES[i], SPOKE_NAMES[j], bsm_name))
@@ -421,8 +435,8 @@ def _run_simplified_simulation(
 
     # Connect quantum channels: each spoke → BSM node
     for spoke_a, spoke_b, bsm_name in pair_names:
-        dist_a = int(CHANNEL_DISTANCES[spoke_a] * distance_multiplier)
-        dist_b = int(CHANNEL_DISTANCES[spoke_b] * distance_multiplier)
+        dist_a = int(CHANNEL_DISTANCES.get(spoke_a, 100_000) * distance_multiplier)
+        dist_b = int(CHANNEL_DISTANCES.get(spoke_b, 100_000) * distance_multiplier)
         avg_dist = (dist_a + dist_b) // 2
 
         # Spoke A → BSM
@@ -449,7 +463,7 @@ def _run_simplified_simulation(
         # Classical channels: BSM ↔ spokes
         bsm_node = tl.get_entity_by_name(bsm_name)
         for spoke_name in [spoke_a, spoke_b]:
-            dist = int(CHANNEL_DISTANCES[spoke_name] * distance_multiplier)
+            dist = int(CHANNEL_DISTANCES.get(spoke_name, 100_000) * distance_multiplier)
             cc1 = ClassicalChannel(f"cc_{bsm_name}_{spoke_name}", tl, distance=dist)
             cc1.set_ends(bsm_node, spoke_name)
             spoke_node = tl.get_entity_by_name(spoke_name)
@@ -505,10 +519,15 @@ def _run_simplified_simulation(
             pass
 
         if entangled_fids:
-            link_fidelities.append(float(np.mean(entangled_fids)))
+            avg_fid = float(np.mean(entangled_fids))
         else:
             base_fid = 0.60 if eavesdropper_active else 0.99
-            link_fidelities.append(base_fid * (0.90 + rng.random() * 0.08))
+            avg_fid = base_fid * (0.90 + rng.random() * 0.08)
+
+        # Apply physical penalty based on user-tweaked parameters
+        penalty = (attenuation / 0.0002) * distance_multiplier * 0.04
+        avg_fid = max(0.2, avg_fid - penalty)
+        link_fidelities.append(avg_fid)
 
     # Generate time-series data
     num_points = 25
@@ -522,7 +541,7 @@ def _run_simplified_simulation(
         point_fid = {"time": round(t_ms, 3)}
         point_qber = {"time": round(t_ms, 3)}
 
-        for k, spoke in enumerate(SPOKE_NAMES):
+        for k, spoke in enumerate(spoke_names):
             base = link_fidelities[k] if k < len(link_fidelities) else 0.95
             noise = rng.normal(0, 0.008 if not eavesdropper_active else 0.04)
             fid = max(0.3, min(1.0, base + noise))
@@ -537,7 +556,7 @@ def _run_simplified_simulation(
         fidelity_series.append(point_fid)
         qber_series.append(point_qber)
 
-    conference_key = _derive_conference_key(link_fidelities, 42)
+    conference_key = _derive_conference_key(link_fidelities, int(time.time()))
     avg_qber = np.mean([_compute_qber(f) for f in link_fidelities])
     SECURITY_THRESHOLD = 0.11
     eavesdropper_detected = bool(avg_qber > SECURITY_THRESHOLD)
@@ -545,7 +564,7 @@ def _run_simplified_simulation(
     topology = {
         "nodes": [
             {"id": s, "type": "spoke", "label": s.replace("Hub_", ""), "x": 0, "y": 0}
-            for s in SPOKE_NAMES
+            for s in spoke_names
         ] + [
             {"id": RELAY_NAME, "type": "relay", "label": "MDI Relay (Untrusted)", "x": 0, "y": 0}
         ],
@@ -553,10 +572,10 @@ def _run_simplified_simulation(
             {
                 "source": spoke,
                 "target": RELAY_NAME,
-                "distance_km": (CHANNEL_DISTANCES[spoke] * distance_multiplier) / 1000,
+                "distance_km": (CHANNEL_DISTANCES.get(spoke, 100_000) * distance_multiplier) / 1000,
                 "attenuation_db_km": attenuation * 1000,
             }
-            for spoke in SPOKE_NAMES
+            for spoke in spoke_names
         ],
     }
 
