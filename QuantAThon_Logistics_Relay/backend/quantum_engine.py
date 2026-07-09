@@ -19,6 +19,8 @@ import hashlib
 import secrets
 import numpy as np
 from typing import Optional
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives import hashes
 
 from sequence.kernel.timeline import Timeline
 from sequence.topology.router_net_topo import RouterNetTopo
