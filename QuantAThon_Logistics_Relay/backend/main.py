@@ -88,6 +88,10 @@ class SimulateRequest(BaseModel):
         default=None,
         description="Which hub started the simulation"
     )
+    key_size: int = Field(
+        default=256,
+        description="Bit size of the generated key"
+    )
 
 
 class SimulateResponse(BaseModel):
