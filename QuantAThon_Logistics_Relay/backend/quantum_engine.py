@@ -464,7 +464,7 @@ def _run_simplified_simulation(
                           other_nodes=[spoke_names[i], spoke_names[j]],
                           seed=200 + len(bsm_nodes))
             bsm_nodes.append(bsm)
-            pair_names.append((SPOKE_NAMES[i], SPOKE_NAMES[j], bsm_name))
+            pair_names.append((spoke_names[i], spoke_names[j], bsm_name))
 
     # Import channel classes
     from sequence.components.optical_channel import QuantumChannel, ClassicalChannel

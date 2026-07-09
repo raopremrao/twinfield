@@ -253,6 +253,8 @@ async def simulate(request: SimulateRequest):
             
         return SimulateResponse(**result)
     except Exception as e:
+        if request.network_code and request.network_code in networks:
+            networks[request.network_code]["status"] = f"Simulation Failed: {str(e)}"
         raise HTTPException(
             status_code=500,
             detail=f"Simulation engine error: {str(e)}"
