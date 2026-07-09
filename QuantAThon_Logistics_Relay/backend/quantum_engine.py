@@ -250,8 +250,9 @@ def run_simulation(
     except Exception as e:
         # Fallback: if RouterNetTopo fails, run a simplified simulation
         return _run_simplified_simulation(
-            spoke_names,
-            eavesdropper_active,
+            spoke_names=spoke_names,
+            protocol=protocol,
+            eavesdropper_active=eavesdropper_active,
             attenuation=attenuation,
             distance_multiplier=distance_multiplier,
             target_fidelity=target_fidelity,
@@ -362,8 +363,14 @@ def run_simulation(
         fidelity_series.append(point_fid)
         qber_series.append(point_qber)
 
-    # Conference Key Agreement
-    conference_key = _derive_conference_key(link_fidelities, int(time.time()))
+    # Key Distribution Protocol
+    if protocol == "QSS":
+        master_secret, secret_shares = _derive_qss_shares(link_fidelities, spoke_names, int(time.time()))
+        conference_key_hex = master_secret
+    else:
+        conference_key_hex = _derive_conference_key(link_fidelities, int(time.time())).hex()
+        secret_shares = {}
+
     avg_qber = np.mean([_compute_qber(f) for f in link_fidelities])
 
     # Security threshold: QBER > 11% indicates eavesdropping (BB84 bound)
