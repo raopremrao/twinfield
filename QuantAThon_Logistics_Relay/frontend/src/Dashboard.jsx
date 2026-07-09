@@ -22,6 +22,7 @@ function Dashboard() {
   const [simHistory, setSimHistory] = useState([]);
   const [networkCode, setNetworkCode] = useState(null);
   const [joinedHubs, setJoinedHubs] = useState([]);
+  const [networkStatus, setNetworkStatus] = useState(null);
   const [protocol, setProtocol] = useState('CKA'); // 'CKA' or 'QSS'
 
   // Simulation Parameters
@@ -80,12 +81,18 @@ function Dashboard() {
       try {
         const res = await axios.get(`${API_BASE}/api/network/${networkCode}/status`);
         setJoinedHubs(res.data.hubs);
+        setNetworkStatus(res.data);
+        
+        if (res.data.has_result && !simulationData) {
+          const resultRes = await axios.get(`${API_BASE}/api/network/${networkCode}/result`);
+          setSimulationData(resultRes.data);
+        }
       } catch (e) {
         console.error(e);
       }
     }, 2000);
     return () => clearInterval(interval);
-  }, [networkCode]);
+  }, [networkCode, simulationData]);
 
   const fetchEncryptedData = useCallback(async () => {
     setIsLoadingData(true);
@@ -144,8 +151,10 @@ function Dashboard() {
 
       {/* ═══ Main Content ═══ */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
-        {/* Control Bar */}
-        <div className="glass-panel p-4 mb-6">
+        {!networkCode ? (
+          <>
+            {/* Control Bar */}
+            <div className="glass-panel p-4 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -181,7 +190,7 @@ function Dashboard() {
                 </button>
               </div>
 
-              {!networkCode ? (
+              {!networkCode && (
                 <button
                   onClick={createNetwork}
                   className="btn-quantum bg-neon-violet/10 text-neon-violet border-neon-violet/30 hover:bg-neon-violet/20 flex items-center gap-2"
@@ -189,14 +198,6 @@ function Dashboard() {
                   <Network size={16} />
                   Create Multiplayer Network
                 </button>
-              ) : (
-                <div className="flex items-center gap-3 bg-surface-900 px-4 py-1.5 rounded-xl border border-white/10">
-                  <span className="text-xs text-slate-400">Network Code:</span>
-                  <span className="text-lg font-mono font-bold text-neon-cyan tracking-widest">{networkCode}</span>
-                  <div className="w-px h-6 bg-white/10 mx-2"></div>
-                  <span className="text-xs text-slate-400">Joined Hubs:</span>
-                  <span className="text-sm font-semibold text-neon-violet">{joinedHubs.length}</span>
-                </div>
               )}
               <button
                 id="btn-run-normal"
@@ -313,6 +314,74 @@ function Dashboard() {
                   className="w-full accent-neon-cyan"
                 />
               </div>
+            </div>
+          </div>
+        )}
+        </>
+        ) : (
+          <div className="glass-panel p-4 sm:p-8 mb-6 text-center shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-cyan via-neon-violet to-neon-amber"></div>
+            
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 tracking-tight">Quantum Network Operations Center</h2>
+            <p className="text-xs sm:text-sm text-slate-400 mb-6 sm:mb-8">Multi-Party Key Generation Lobby</p>
+            
+            <div className="bg-surface-900 border border-neon-cyan/30 inline-block px-6 py-4 sm:px-12 sm:py-5 rounded-3xl mb-8 sm:mb-10 shadow-[0_0_30px_rgba(0,240,255,0.1)]">
+               <p className="text-[10px] sm:text-xs text-neon-cyan mb-1 sm:mb-2 uppercase tracking-widest font-semibold">Terminal Access Code</p>
+               <p className="text-5xl sm:text-6xl font-mono font-bold text-white tracking-[0.2em]">{networkCode}</p>
+            </div>
+            
+            <div className="text-left max-w-3xl mx-auto">
+               <h3 className="text-sm font-bold text-white mb-4 border-b border-white/10 pb-3 flex items-center justify-between">
+                  <span className="uppercase tracking-wider">Connected Terminals</span>
+                  <span className="bg-neon-violet/20 text-neon-violet px-3 py-1 rounded-full text-xs">{joinedHubs.length} Joined</span>
+               </h3>
+               
+               <div className="grid gap-3 mb-8 min-h-[150px]">
+                 {joinedHubs.map(hub => (
+                    <div key={hub.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-surface-800 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors gap-3">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-surface-900 flex items-center justify-center border border-white/5 shrink-0">
+                          <Network size={20} className="text-neon-cyan" />
+                        </div>
+                        <span className="font-mono text-white text-base sm:text-lg font-semibold break-all">{hub.id}</span>
+                      </div>
+                      <span className="text-[10px] sm:text-xs text-slate-400 bg-black/20 px-3 py-1.5 rounded-lg whitespace-nowrap">
+                        Joined at {new Date(hub.joined_at * 1000).toLocaleTimeString()}
+                      </span>
+                    </div>
+                 ))}
+                 {joinedHubs.length === 0 && (
+                   <div className="flex flex-col items-center justify-center text-slate-500 py-10 border border-dashed border-white/10 rounded-xl bg-surface-800/50">
+                     <Loader2 size={24} className="animate-spin mb-3 opacity-50" />
+                     <p className="text-sm">Waiting for edge terminals to pair...</p>
+                   </div>
+                 )}
+               </div>
+               
+               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-surface-900 border border-white/5 rounded-2xl gap-4">
+                 <div className="w-full sm:w-auto">
+                   <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Network Status</p>
+                   <p className="text-sm sm:text-base font-semibold text-white">{networkStatus?.status || "Lobby Open"}</p>
+                   {networkStatus?.started_by && (
+                     <p className="text-xs sm:text-sm text-neon-violet mt-1">
+                       Generation initiated by: <span className="font-bold">{networkStatus.started_by}</span>
+                     </p>
+                   )}
+                 </div>
+                 
+                 <div className="flex gap-2 w-full sm:w-auto">
+                   {!simulationData && !networkStatus?.status?.includes("Generating") && joinedHubs.length >= 2 && (
+                     <button
+                       onClick={() => runSimulation(false)}
+                       disabled={isLoading}
+                       className="btn-quantum w-full sm:w-auto bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan/30 flex items-center justify-center gap-2 py-3 px-6"
+                     >
+                       {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />} 
+                       Force Start Generation
+                     </button>
+                   )}
+                 </div>
+               </div>
             </div>
           </div>
         )}

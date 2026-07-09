@@ -15,6 +15,9 @@ export default function HubView() {
   const [isJoined, setIsJoined] = useState(false);
   const [assignedHubId, setAssignedHubId] = useState("");
   const [joinError, setJoinError] = useState("");
+  
+  const [networkStatus, setNetworkStatus] = useState(null);
+  const [simulationData, setSimulationData] = useState(null);
 
   const joinNetwork = async () => {
     if (!networkCode || !hubName) return;
@@ -30,19 +33,41 @@ export default function HubView() {
     }
   };
 
-  // Reset status
+  // Polling for network status when joined
   useEffect(() => {
-    setStatus("idle");
-    setManifest("");
-  }, [assignedHubId]);
-
-  const submitManifest = async () => {
-    setStatus("submitting");
-    // Mocking transmission logic for UI
-    setTimeout(() => {
-      setStatus("success");
-      setTimeout(() => setStatus("idle"), 3000);
+    if (!isJoined || !networkCode) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/network/${networkCode}/status`);
+        setNetworkStatus(res.data);
+        
+        if (res.data.has_result && !simulationData) {
+          const resultRes = await axios.get(`${API_BASE}/api/network/${networkCode}/result`);
+          setSimulationData(resultRes.data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
     }, 2000);
+    return () => clearInterval(interval);
+  }, [isJoined, networkCode, simulationData]);
+
+  const startKeyGeneration = async () => {
+    try {
+      await axios.post(`${API_BASE}/api/simulate`, {
+        eavesdropper_active: false,
+        attenuation: 0.0002,
+        distance_multiplier: 1.0,
+        target_fidelity: 0.85,
+        memo_size: 50,
+        network_code: networkCode,
+        protocol: "QSS",
+        started_by: assignedHubId
+      });
+    } catch (err) {
+      console.error("Failed to start simulation", err);
+    }
   };
 
   return (
@@ -52,28 +77,28 @@ export default function HubView() {
         <div className="glass-panel p-6 mb-6 relative overflow-hidden shadow-2xl">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-cyan via-neon-violet to-neon-amber"></div>
           
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
             <button 
               onClick={() => navigate('/')}
               className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs font-medium uppercase tracking-wider"
             >
               <ArrowLeft size={14} /> NOC Dashboard
             </button>
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-neon-cyan/10 border border-neon-cyan/20">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 w-full sm:w-auto justify-center">
               <div className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse"></div>
               <span className="text-[10px] font-mono text-neon-cyan tracking-wider">{isJoined ? "CKA LINK SECURE" : "AWAITING PAIRING"}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-5">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">
             <div className="w-16 h-16 rounded-2xl bg-surface-900 border border-white/10 flex items-center justify-center shrink-0 shadow-inner">
               <Network size={28} className="text-neon-cyan" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white tracking-tight mb-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight mb-1 break-all">
                 {isJoined ? assignedHubId : "Join Network"}
               </h1>
-              <p className="text-sm text-slate-400">Distributed Logistics Edge Terminal</p>
+              <p className="text-xs sm:text-sm text-slate-400">Distributed Logistics Edge Terminal</p>
             </div>
           </div>
         </div>
@@ -113,52 +138,56 @@ export default function HubView() {
             </div>
           </div>
         ) : (
-          <div className="glass-panel p-6 shadow-xl">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2 uppercase tracking-wide">
-              <Truck size={16} className="text-neon-violet" /> Local Cargo Manifest
-            </h2>
+          <div className="glass-panel p-6 shadow-xl text-center">
             
-            {/* Hub Switcher Removed For Multiplayer Mode */}
-          </div>
-
-          <div className="relative group">
-            <textarea
-              value={manifest}
-              onChange={(e) => setManifest(e.target.value)}
-              placeholder={`Enter cargo manifest data in JSON format...\n\n{\n  "terminal": "${assignedHubId}",\n  "cargo": "Medical Supplies"\n}`}
-              className="w-full h-56 bg-surface-900 border border-white/10 rounded-xl p-5 text-sm font-mono text-slate-300 focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/50 mb-6 placeholder:text-slate-600 transition-all resize-none shadow-inner"
-            />
-            <div className="absolute bottom-10 right-4 text-[10px] text-slate-600 font-mono flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Lock size={10} /> AES-256-GCM READY
+            <div className="mb-8 mt-4">
+               <h2 className="text-xl font-bold text-white mb-2">{networkStatus?.status || "Waiting for Supervisor..."}</h2>
+               {networkStatus?.started_by && (
+                 <p className="text-sm text-neon-violet">Key generation initiated by: <span className="font-bold">{networkStatus.started_by}</span></p>
+               )}
             </div>
-          </div>
 
-          <button
-            onClick={submitManifest}
-            disabled={status === "submitting" || status === "success" || !manifest.trim()}
-            className={`w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-300 shadow-lg ${
-              status === "success" 
-                ? 'bg-neon-green/20 border border-neon-green/40 text-neon-green' 
-                : 'bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20 hover:shadow-neon-cyan/10'
-            } disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-neon-cyan/10`}
-          >
-            {status === "submitting" ? (
-              <span className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" /> 
-                Encrypting via Quantum Key...
-              </span>
-            ) : status === "success" ? (
-              <span className="flex items-center gap-2 text-neon-green">
-                <ShieldCheck size={18} /> Transmitted Securely
-              </span>
+            {!simulationData ? (
+              <button
+                onClick={startKeyGeneration}
+                disabled={networkStatus?.status?.includes("Generating")}
+                className="btn-quantum w-full max-w-sm mx-auto bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan/30 flex items-center justify-center gap-2 py-4 text-lg disabled:opacity-50 shadow-[0_0_20px_rgba(0,240,255,0.15)] transition-all"
+              >
+                <Lock size={20} />
+                {networkStatus?.status?.includes("Generating") ? "Physics Simulation Running..." : "Start Generating Secret Key"}
+              </button>
             ) : (
-              <span className="flex items-center gap-2">
-                <Send size={18} /> Transmit to Network
-              </span>
+              <div className="text-left bg-surface-900 border border-neon-amber/20 p-6 rounded-xl shadow-[0_0_15px_rgba(251,191,36,0.1)]">
+                <div className="flex items-center gap-3 mb-4">
+                  <ShieldCheck size={24} className="text-neon-green shrink-0" />
+                  <h3 className="text-base sm:text-lg font-bold text-white">Quantum Key Distributed</h3>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider">Protocol</p>
+                  <p className="text-sm font-bold text-neon-violet tracking-widest">{simulationData.protocol}</p>
+                </div>
+
+                {simulationData.protocol === 'QSS' && simulationData.secret_shares?.[assignedHubId] && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider">Your Cryptographic Share (Keep Secret!)</p>
+                    <p className="text-sm font-mono text-neon-amber bg-black/50 p-4 rounded-lg break-all border border-white/5 shadow-inner">
+                      {simulationData.secret_shares[assignedHubId]}
+                    </p>
+                  </div>
+                )}
+
+                {simulationData.protocol === 'CKA' && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider">Global Conference Key</p>
+                    <p className="text-sm font-mono text-neon-cyan bg-black/50 p-4 rounded-lg break-all border border-white/5 shadow-inner">
+                      {simulationData.conference_key_hex}
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
-          </button>
-        </div>
+          </div>
         )}
         
         {/* Footer info */}

@@ -48,7 +48,7 @@ app.add_middleware(
 # ─── In-Memory State ────────────────────────────────────────────────────────
 
 _last_simulation_result = None
-networks = {}  # Format: { "1234": { "hubs": ["Hub_Phone1", "Hub_Phone2"], "supervisor_active": True } }
+networks = {}  # Format: { "1234": { "hubs": [{"id": "Hub_1", "joined_at": float}], "status": str, "started_by": str, "last_simulation": dict } }
 
 
 # ─── Application Startup ────────────────────────────────────────────────────
@@ -83,6 +83,10 @@ class SimulateRequest(BaseModel):
     protocol: str = Field(
         default="CKA",
         description="Quantum cryptography protocol: 'CKA' (Conference Key Agreement) or 'QSS' (Quantum Secret Sharing)"
+    )
+    started_by: Optional[str] = Field(
+        default=None,
+        description="Which hub started the simulation"
     )
 
 
@@ -139,7 +143,12 @@ async def create_network():
     while code in networks:
         code = f"{secrets.randbelow(10000):04d}"
     
-    networks[code] = {"hubs": [], "supervisor_active": True}
+    networks[code] = {
+        "hubs": [], 
+        "status": "Waiting for hubs to join...",
+        "started_by": None,
+        "last_simulation": None
+    }
     return {"network_code": code}
 
 @app.post("/api/network/{code}/join", tags=["Network"])
@@ -149,8 +158,11 @@ async def join_network(code: str, req: JoinNetworkRequest):
         raise HTTPException(status_code=404, detail="Network code not found.")
     
     hub_id = f"Hub_{req.hub_name}"
-    if hub_id not in networks[code]["hubs"]:
-        networks[code]["hubs"].append(hub_id)
+    if not any(h["id"] == hub_id for h in networks[code]["hubs"]):
+        networks[code]["hubs"].append({
+            "id": hub_id,
+            "joined_at": time.time()
+        })
         
     return {"hub_id": hub_id, "status": "joined"}
 
@@ -160,41 +172,64 @@ async def get_network_status(code: str):
     if code not in networks:
         raise HTTPException(status_code=404, detail="Network code not found.")
     
-    return {"hubs": networks[code]["hubs"]}
+    net = networks[code]
+    return {
+        "hubs": net["hubs"],
+        "status": net["status"],
+        "started_by": net["started_by"],
+        "has_result": net["last_simulation"] is not None
+    }
 
+@app.get("/api/network/{code}/result", tags=["Network"], response_model=SimulateResponse)
+async def get_network_result(code: str):
+    """Gets the simulation result for a network."""
+    if code not in networks or networks[code]["last_simulation"] is None:
+        raise HTTPException(status_code=404, detail="Result not ready or network not found.")
+    
+    return SimulateResponse(**networks[code]["last_simulation"])
+
+
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+executor = ThreadPoolExecutor(max_workers=4)
 
 @app.post("/api/simulate", response_model=SimulateResponse, tags=["Simulation"])
 async def simulate(request: SimulateRequest):
     """
     Trigger the SeQUeNCe quantum network simulation.
-
-    Runs the full Hub-and-Spoke MDI-QKD relay simulation with:
-    - 3 QuantumRouter spoke nodes (Mumbai, Delhi, Chennai)
-    - 3 BSMNode relay nodes (Bell State Measurement)
-    - Fiber quantum channels (0.2 dB/km attenuation)
-    - Entanglement generation and Conference Key Agreement
-
-    If eavesdropper_active=true, injects measurement disturbance
-    that degrades fidelity and spikes QBER, demonstrating quantum
-    state collapse under interception.
     """
     global _last_simulation_result
 
     spoke_names = None
     if request.network_code and request.network_code in networks:
-        spoke_names = networks[request.network_code]["hubs"]
+        net = networks[request.network_code]
+        spoke_names = [h["id"] for h in net["hubs"]]
+        net["status"] = "Generating Quantum Keys via SeQUeNCe..."
+        net["started_by"] = request.started_by or "NOC Supervisor"
 
+    loop = asyncio.get_running_loop()
     try:
-        result = run_simulation(
-            spoke_names=spoke_names,
-            protocol=request.protocol,
-            eavesdropper_active=request.eavesdropper_active,
-            attenuation=request.attenuation,
-            distance_multiplier=request.distance_multiplier,
-            target_fidelity=request.target_fidelity,
-            memo_size=request.memo_size
+        # Run synchronous SeQUeNCe engine in a thread pool so we don't block the API
+        result = await loop.run_in_executor(
+            executor,
+            lambda: run_simulation(
+                spoke_names=spoke_names,
+                protocol=request.protocol,
+                eavesdropper_active=request.eavesdropper_active,
+                attenuation=request.attenuation,
+                distance_multiplier=request.distance_multiplier,
+                target_fidelity=request.target_fidelity,
+                memo_size=request.memo_size
+            )
         )
+        
         _last_simulation_result = result
+        
+        if request.network_code and request.network_code in networks:
+            networks[request.network_code]["last_simulation"] = result
+            networks[request.network_code]["status"] = "Key Distribution Complete"
+            
         return SimulateResponse(**result)
     except Exception as e:
         raise HTTPException(
