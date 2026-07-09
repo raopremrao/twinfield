@@ -1,7 +1,7 @@
 """
 Quantum Network Engine — SeQUeNCe-Based Hub-and-Spoke MDI Relay
 =================================================================
-Implements a MAQAN/QuILA-inspired topology using SeQUeNCe's discrete-event
+Implements a MAQAN/TwinField-inspired topology using SeQUeNCe's discrete-event
 quantum network simulator.
 
 Architecture:

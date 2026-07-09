@@ -25,7 +25,7 @@ LOGISTICS_MANIFEST = {
     "version": "1.0.0",
     "classification": "QUANTUM-SECURED | CONFERENCE-KEY-ENCRYPTED",
     "generated_at": None,  # Filled at runtime
-    "network_operator": "QuILA Quantum Logistics Network",
+    "network_operator": "TwinField Quantum Logistics Network",
     "parties": [
         {
             "hub_id": "Hub_Mumbai",

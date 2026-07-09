@@ -25,9 +25,9 @@ from crypto_utils import encrypt_manifest
 # ─── FastAPI Application ────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="QuILA Quantum Logistics Relay — NOC API",
+    title="TwinField Quantum Logistics Relay — NOC API",
     description=(
-        "Production-grade API for MAQAN/QuILA-inspired Quantum Network simulation "
+        "Production-grade API for MAQAN/TwinField-inspired Quantum Network simulation "
         "using SeQUeNCe (Simulator of QUantum Network Communication). "
         "Implements Hub-and-Spoke MDI-QKD with Conference Key Agreement "
         "for multi-party secure logistics data sharing."

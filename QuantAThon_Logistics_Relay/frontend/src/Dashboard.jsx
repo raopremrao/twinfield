@@ -125,7 +125,7 @@ function Dashboard() {
             </div>
             <div>
               <h1 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
-                QuILA
+                TwinField
                 <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neon-violet/10 text-neon-violet border border-neon-violet/20">
                   Quant-A-Thon'26
                 </span>
@@ -535,7 +535,7 @@ function Dashboard() {
               Quantum Network Operations Center
             </h3>
             <p className="text-sm text-slate-400 max-w-md mb-1">
-              Hub-and-Spoke MDI-QKD Relay — MAQAN / QuILA Architecture
+              Hub-and-Spoke MDI-QKD Relay — MAQAN / TwinField Architecture
             </p>
             <p className="text-xs text-slate-500 max-w-lg mb-6">
               Powered by SeQUeNCe (Argonne National Lab) discrete-event quantum network simulator.

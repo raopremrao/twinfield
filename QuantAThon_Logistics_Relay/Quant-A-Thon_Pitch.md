@@ -1,11 +1,11 @@
-# QuILA: Quantum-Secured Logistics Relay Architecture
+# TwinField: Quantum-Secured Logistics Relay Architecture
 **Author:** Prem
 **Event:** Quant-A-Thon'26
 
 ---
 
 ## 🎯 Executive Summary
-The QuILA (Quantum-Secured Logistics Relay Architecture) is an industry-grade Quantum Network simulation designed to secure Multi-Party Logistics Data Sharing. Built on top of Argonne National Laboratory's **SeQUeNCe** (Simulator of QUantum Network Communication), it implements a Hub-and-Spoke Measurement-Device-Independent (MDI) Bell State Measurement (BSM) relay, closely inspired by India's MAQAN/QuILA topologies.
+The TwinField (Quantum-Secured Logistics Relay Architecture) is an industry-grade Quantum Network simulation designed to secure Multi-Party Logistics Data Sharing. Built on top of Argonne National Laboratory's **SeQUeNCe** (Simulator of QUantum Network Communication), it implements a Hub-and-Spoke Measurement-Device-Independent (MDI) Bell State Measurement (BSM) relay, closely inspired by India's MAQAN/TwinField topologies.
 
 By leveraging Conference Key Agreement (CKA) via multi-partite entanglement, the system enables secure, post-quantum data sharing between untrusted logistics hubs, utilizing AES-256-GCM encryption seeded by quantum-derived keys.
 
