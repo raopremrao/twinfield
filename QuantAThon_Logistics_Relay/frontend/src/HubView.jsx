@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Network, ArrowLeft, Send, ShieldCheck, Truck, Lock } from 'lucide-react';
+import { Network, ArrowLeft, Send, ShieldCheck, ShieldAlert, Truck, Lock } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8000' : `http://${window.location.hostname}:8000`);
@@ -60,6 +60,11 @@ export default function HubView() {
     }, 2000);
     return () => clearInterval(interval);
   }, [isJoined, networkCode, simulationData]);
+
+  const resetForNewGeneration = () => {
+    setSimulationData(null);
+    setNetworkStatus(prev => prev ? {...prev, has_result: false, status: "Ready to generate"} : null);
+  };
 
   const startKeyGeneration = async () => {
     try {
@@ -174,7 +179,7 @@ export default function HubView() {
 
             {!simulationData ? (
               <div className="max-w-sm mx-auto">
-                <div className="grid grid-cols-2 gap-4 mb-4 text-left">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-left">
                   <div>
                     <label className="block text-xs text-slate-400 mb-1 uppercase tracking-wider">Protocol</label>
                     <select 
@@ -210,6 +215,29 @@ export default function HubView() {
                   {networkStatus?.status?.includes("Generating") ? "Physics Simulation Running..." : "Start Generating Secret Key"}
                 </button>
               </div>
+            ) : simulationData.eavesdropper_detected || (simulationData.qber && simulationData.qber > 0.11) ? (
+              <div className="text-left bg-neon-red/10 border border-neon-red p-6 rounded-xl shadow-[0_0_15px_rgba(255,0,0,0.2)]">
+                <div className="flex items-center gap-3 mb-4">
+                  <ShieldAlert size={24} className="text-neon-red shrink-0" />
+                  <h3 className="text-base sm:text-lg font-bold text-neon-red">Eavesdropping Attack Detected!</h3>
+                </div>
+                <div className="mb-4">
+                  <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider">Quantum Bit Error Rate (QBER)</p>
+                  <p className="text-2xl font-bold text-white">
+                    {(simulationData.qber * 100).toFixed(2)}%
+                    <span className="text-xs text-neon-red ml-2 tracking-normal uppercase">(Above 11% Threshold)</span>
+                  </p>
+                </div>
+                <p className="text-sm text-slate-300 mb-6 border-l-2 border-neon-red pl-3">
+                  The quantum superposition was collapsed by an unauthorized third party during transmission. Key distribution has been aborted to guarantee absolute security.
+                </p>
+                <button
+                  onClick={resetForNewGeneration}
+                  className="w-full py-3 rounded-xl border border-neon-red/50 text-neon-red hover:bg-neon-red/10 transition-colors flex items-center justify-center gap-2 font-bold"
+                >
+                  <Lock size={16} /> Generate New Secure Key
+                </button>
+              </div>
             ) : (
               <div className="text-left bg-surface-900 border border-neon-amber/20 p-6 rounded-xl shadow-[0_0_15px_rgba(251,191,36,0.1)]">
                 <div className="flex items-center gap-3 mb-4">
@@ -241,7 +269,7 @@ export default function HubView() {
                 )}
                 
                 <button
-                  onClick={startKeyGeneration}
+                  onClick={resetForNewGeneration}
                   className="w-full mt-6 py-3 rounded-xl border border-white/20 text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
                 >
                   <Lock size={16} /> Generate New Key
