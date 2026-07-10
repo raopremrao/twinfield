@@ -139,6 +139,7 @@ async def health_check():
 
 class JoinNetworkRequest(BaseModel):
     hub_name: str
+    distance_km: float = 100.0
 
 @app.post("/api/network/create", tags=["Network"])
 async def create_network():
@@ -166,7 +167,8 @@ async def join_network(code: str, req: JoinNetworkRequest):
         networks[code]["hubs"].append({
             "id": hub_id,
             "joined_at": time.time(),
-            "last_seen": time.time()
+            "last_seen": time.time(),
+            "distance_km": req.distance_km
         })
         
     return {"hub_id": hub_id, "status": "joined"}
@@ -228,9 +230,11 @@ async def simulate(request: SimulateRequest):
     global _last_simulation_result
 
     spoke_names = None
+    spoke_distances = None
     if request.network_code and request.network_code in networks:
         net = networks[request.network_code]
         spoke_names = [h["id"] for h in net["hubs"]]
+        spoke_distances = {h["id"]: h.get("distance_km", 100.0) * 1000 for h in net["hubs"]}
         net["status"] = "Generating Quantum Keys via SeQUeNCe..."
         net["started_by"] = request.started_by or "NOC Supervisor"
         net["last_simulation"] = None
@@ -242,6 +246,7 @@ async def simulate(request: SimulateRequest):
             executor,
             lambda: run_simulation(
                 spoke_names=spoke_names,
+                spoke_distances=spoke_distances,
                 protocol=request.protocol,
                 eavesdropper_active=request.eavesdropper_active,
                 attenuation=request.attenuation,

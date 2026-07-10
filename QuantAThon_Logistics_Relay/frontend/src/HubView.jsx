@@ -12,6 +12,7 @@ export default function HubView() {
   const [status, setStatus] = useState("idle");
   const [networkCode, setNetworkCode] = useState("");
   const [hubName, setHubName] = useState("");
+  const [distanceKm, setDistanceKm] = useState(100);
   const [isJoined, setIsJoined] = useState(false);
   const [assignedHubId, setAssignedHubId] = useState("");
   const [joinError, setJoinError] = useState("");
@@ -27,7 +28,8 @@ export default function HubView() {
     try {
       setJoinError("");
       const res = await axios.post(`${API_BASE}/api/network/${networkCode}/join`, {
-        hub_name: hubName
+        hub_name: hubName,
+        distance_km: parseFloat(distanceKm) || 100.0
       });
       setAssignedHubId(res.data.hub_id);
       setIsJoined(true);
@@ -141,6 +143,18 @@ export default function HubView() {
                   value={hubName}
                   onChange={e => setHubName(e.target.value)}
                   placeholder="e.g. Phone1, iPad, Delhi"
+                  className="w-full bg-surface-900 border border-white/10 rounded-xl p-3 text-sm text-white focus:border-neon-cyan mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400">Distance to Relay (km)</label>
+                <input 
+                  type="number" 
+                  value={distanceKm}
+                  onChange={e => setDistanceKm(e.target.value)}
+                  min="1"
+                  max="500"
+                  placeholder="100"
                   className="w-full bg-surface-900 border border-white/10 rounded-xl p-3 text-sm text-white focus:border-neon-cyan mt-1"
                 />
               </div>

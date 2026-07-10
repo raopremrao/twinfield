@@ -43,17 +43,42 @@ TwinField allows users to toggle between different cryptographic methods to secu
 
 ### 3.1 CKA (Conference Key Agreement)
 - **What it is:** A protocol where all *N* legitimate parties in the network derive the exact same identical master key.
-- **How it works:** The central relay entangles all the hubs. The hubs measure their photons and publicly announce their bases. After sifting and error correction, they all distill the identical symmetric key. 
+- **Physical Simulation (How we implement it):** Instead of simulating the computationally heavy process of randomly selecting bases and dropping 50% of photons (sifting), our `quantum_engine.py` leverages SeQUeNCe's `FOCK_DENSITY_MATRIX_FORMALISM`. We model the photons from the N Hubs arriving at the Relay, construct a joint quantum state, and compute a strict partial trace over the density matrix to extract the exact physical **Fidelity** of the heralded entanglement. 
+- **Cryptographic Derivation:** We take the physical fidelity array (which represents true quantum entropy) and feed it into an **HKDF (HMAC-based Extract-and-Expand Key Derivation Function) utilizing SHA-256**. This perfectly translates the raw quantum noise into a symmetric 256-bit hex string that all nodes can agree upon.
 - **Use Case:** Perfect for broadcasting a highly classified encrypted logistics manifest that every trusted hub in the network needs to decrypt and read simultaneously.
+
+```mermaid
+flowchart TD
+    Q[SeQUeNCe Density Matrix Fidelity] -->|Quantum Entropy| HKDF[HKDF SHA-256 KDF]
+    HKDF --> MasterKey{Master Symmetric Key}
+    MasterKey -->|Identical Key| Hub1[Logistics Hub 1]
+    MasterKey -->|Identical Key| Hub2[Logistics Hub 2]
+    MasterKey -->|Identical Key| HubN[Logistics Hub N]
+    Hub1 & Hub2 & HubN --> AES[AES-256-GCM Decryption]
+```
 
 ### 3.2 QSS (Quantum Secret Sharing)
 - **What it is:** A protocol where the master key is mathematically split into *N* different pieces (shares), and distributed across the network. 
-- **How it works:** Each hub receives a completely unique, randomized hex string. The actual master key does not exist in any single location. The only way to decrypt the logistics manifest is if *all N hubs combine their physical shares together* (using XOR logic).
+- **Cryptographic Implementation:** We first derive a master key using the same density matrix fidelity extraction as CKA. However, instead of broadcasting it, we use **Shamir-inspired XOR Secret Sharing**. For an N-party network, the backend generates N-1 completely random cryptographic byte arrays. The Nth share is calculated by sequentially XOR-ing the Master Key against all N-1 random arrays.
+- **Zero-Trust Logic:** Each hub is issued one unique share. The master key does not exist on any single hub. The only way to decrypt the payload is if **all N hubs combine their physical shares using `Share_1 ⊕ Share_2 ... ⊕ Share_N = Master_Key`**.
 - **Use Case:** Perfect for zero-trust environments (like nuclear transport or high-value asset logistics) where no single rogue hub driver should be able to decrypt the route manifest alone.
 
+```mermaid
+flowchart TD
+    MasterKey{Master Symmetric Key} -->|XOR Logic| Splitter((Secret Sharing Splitter))
+    Splitter -->|Random Share 1| Hub1[Logistics Hub 1]
+    Splitter -->|Random Share 2| Hub2[Logistics Hub 2]
+    Splitter -->|XOR Remainder Share 3| Hub3[Logistics Hub 3]
+    Hub1 -->|Share 1| Combiner((Physical Rendezvous))
+    Hub2 -->|Share 2| Combiner
+    Hub3 -->|Share 3| Combiner
+    Combiner -->|Share 1 ⊕ Share 2 ⊕ Share 3| Decrypt[Reconstructed Master Key]
+```
+
 ### 3.3 AES-256-GCM (Advanced Encryption Standard - Galois/Counter Mode)
-- **What it is:** A classical, military-grade symmetric encryption algorithm. 
-- **How it works:** While the quantum network (CKA/QSS) securely *distributes* the key, AES is what actually *uses* the key to encrypt the payload. TwinField uses the 256-bit variant (the strongest available) in GCM mode. GCM not only encrypts the data but also provides authenticated integrity, ensuring that Eve hasn't tampered with or flipped bits in the ciphertext.
+- **What it is:** A classical, military-grade symmetric encryption algorithm used for the final payload.
+- **How we implement it:** While the quantum network (CKA/QSS) securely *distributes* the key, AES is what actually *uses* the key in `crypto_utils.py` to encrypt the JSON logistics manifest. 
+- **Authenticated Integrity (GCM Mode):** We specifically use GCM (Galois/Counter Mode) because it provides a 16-byte authentication tag appended to the ciphertext. This ensures that even if Eve intercepts the classical internet traffic, she cannot tamper with or randomly flip bits in the ciphertext without mathematically breaking the authentication tag and alerting the system.
 
 ---
 

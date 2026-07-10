@@ -59,6 +59,7 @@ function Dashboard() {
           fidelity: res.data.summary.avg_fidelity,
           qber: res.data.summary.avg_qber,
           detected: res.data.eavesdropper_detected,
+          engine: res.data.summary.engine || 'Fallback Math Engine'
         },
         ...prev.slice(0, 9),
       ]);
@@ -570,6 +571,7 @@ function Dashboard() {
                   <tr className="text-slate-500 border-b border-white/5">
                     <th className="text-left py-2 px-3 font-medium">Time</th>
                     <th className="text-left py-2 px-3 font-medium">Mode</th>
+                    <th className="text-left py-2 px-3 font-medium">Physics Engine</th>
                     <th className="text-right py-2 px-3 font-medium">Fidelity</th>
                     <th className="text-right py-2 px-3 font-medium">QBER</th>
                     <th className="text-center py-2 px-3 font-medium">Status</th>
@@ -587,6 +589,9 @@ function Dashboard() {
                         }`}>
                           {h.mode}
                         </span>
+                      </td>
+                      <td className="py-2 px-3 text-xs text-slate-400">
+                        {h.engine}
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-semibold text-slate-200">
                         {h.fidelity.toFixed(4)}

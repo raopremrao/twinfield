@@ -228,6 +228,7 @@ def _derive_qss_shares(fidelities: list, spoke_names: list, sim_seed: int, key_s
 
 def run_simulation(
     spoke_names: list = None,
+    spoke_distances: dict = None,
     protocol: str = "CKA",
     eavesdropper_active: bool = False,
     attenuation: float = FIBER_ATTENUATION,
@@ -257,9 +258,13 @@ def run_simulation(
     if spoke_names is None or len(spoke_names) < 2:
         spoke_names = SPOKE_NAMES
 
+    if spoke_distances is None:
+        spoke_distances = CHANNEL_DISTANCES
+
     if not SEQUENCE_INSTALLED:
         return _run_pure_math_simulation(
             spoke_names=spoke_names,
+            spoke_distances=spoke_distances,
             protocol=protocol,
             eavesdropper_active=eavesdropper_active,
             attenuation=attenuation,
@@ -276,7 +281,7 @@ def run_simulation(
             Photon, measure_multiple_with_cache_fock_density, density_partial_trace, np, copy
         )
         return _run_sequence_simulation(
-            spoke_names=spoke_names, protocol=protocol, eavesdropper_active=eavesdropper_active,
+            spoke_names=spoke_names, spoke_distances=spoke_distances, protocol=protocol, eavesdropper_active=eavesdropper_active,
             attenuation=attenuation, distance_multiplier=distance_multiplier,
             target_fidelity=target_fidelity, memo_size=memo_size, key_size=key_size
         )
@@ -284,6 +289,7 @@ def run_simulation(
         print("Sequence hardware execution failed, falling back to math engine:", e)
         return _run_pure_math_simulation(
             spoke_names=spoke_names,
+            spoke_distances=spoke_distances,
             protocol=protocol,
             eavesdropper_active=eavesdropper_active,
             attenuation=attenuation,
@@ -423,7 +429,7 @@ def run_simulation(
             {
                 "source": spoke,
                 "target": RELAY_NAME,
-                "distance_km": (CHANNEL_DISTANCES.get(spoke, 100_000) * distance_multiplier) / 1000,
+                "distance_km": (spoke_distances.get(spoke, 100_000) * distance_multiplier) / 1000,
                 "attenuation_db_km": attenuation * 1000,
             }
             for spoke in spoke_names
@@ -467,7 +473,7 @@ def run_simulation(
 
 
 def _run_sequence_simulation(
-    spoke_names: list, protocol: str, eavesdropper_active: bool,
+    spoke_names: list, spoke_distances: dict, protocol: str, eavesdropper_active: bool,
     attenuation: float, distance_multiplier: float, target_fidelity: float,
     memo_size: int, key_size: int
 ) -> dict:
@@ -501,8 +507,8 @@ def _run_sequence_simulation(
         for seed, n in zip([1,2,3,4], [node1, node2, erc, erc_2]):
             n.set_seed(seed)
             
-        dist1 = CHANNEL_DISTANCES.get(name1, 100_000) * distance_multiplier / 1000  # in km
-        dist2 = CHANNEL_DISTANCES.get(name2, 100_000) * distance_multiplier / 1000  # in km
+        dist1 = spoke_distances.get(name1, 100_000) * distance_multiplier / 1000  # in km
+        dist2 = spoke_distances.get(name2, 100_000) * distance_multiplier / 1000  # in km
         
         add_channel(node1, erc_name, tl, dist1, attenuation)
         add_channel(node2, erc_name, tl, dist2, attenuation)
@@ -607,7 +613,7 @@ except ImportError:
 
 
 def _run_pure_math_simulation(
-    spoke_names: list, protocol: str, eavesdropper_active: bool,
+    spoke_names: list, spoke_distances: dict, protocol: str, eavesdropper_active: bool,
     attenuation: float, distance_multiplier: float, target_fidelity: float,
     memo_size: int, key_size: int
 ) -> dict:
@@ -626,7 +632,7 @@ def _run_pure_math_simulation(
         # Base fidelity depends on eavesdropper
         base_fid = 0.65 if eavesdropper_active else 0.98
         # Noise added by fiber distance
-        dist = CHANNEL_DISTANCES.get(name, 100_000) * distance_multiplier
+        dist = spoke_distances.get(name, 100_000) * distance_multiplier
         # The longer the distance and higher attenuation, the lower fidelity
         loss_factor = np.exp(-attenuation * dist / 1000)
         
