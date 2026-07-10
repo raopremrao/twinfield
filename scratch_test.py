@@ -4,9 +4,9 @@ from quantum_engine import _run_sequence_simulation
 
 spoke_names = ["Hub_Chrome", "Hub_Brave", "Hub_Firefox"]
 spoke_distances = {
-    "Hub_Chrome": 50000.0,
-    "Hub_Brave": 50000.0,
-    "Hub_Firefox": 50000.0
+    "Hub_Chrome": 500000000.0,
+    "Hub_Brave": 500000000.0,
+    "Hub_Firefox": 500000000.0
 }
 
 res = _run_sequence_simulation(

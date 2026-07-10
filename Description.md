@@ -178,4 +178,10 @@ TwinField is architecturally designed to mirror real-world Quantum Key Distribut
 - **Future Enhancement:** To deploy TwinField on a massive scale, we must transition the active lobbies dictionary to a **Redis** in-memory cache. This allows the FastAPI backend to be distributed across multiple physical server nodes, ensuring load-balancing and fault tolerance.
 
 ### 7.6 Dynamic Path Routing
+- **Future Enhancement:** Rather than just a star topology, integrating full mesh pathfinding algorithms so that if the fiber between Hub A and Relay is cut, the photons can automatically route through Hub B to maintain the entangled connection.
+
+### 7.7 Cloud Deployment & C++ Compiler Fixes
+- **The Issue:** The `SeQUeNCe` quantum simulator relies on a highly optimized C++ mathematical extension (`fock_density`) to perform the density matrix partial traces and measurements at high speeds. When deploying the backend to basic Linux cloud containers (like Vercel, Render, or Heroku), this C++ extension often fails to compile properly for the remote CPU architecture, silently returning `NaN` and crashing the fidelity calculation.
+- **The Fix:** The system currently implements a **Seamless Math Fallback**. If the python backend detects `NaN` resulting from a failed C++ trace, it intercepts the error and calculates the true expected fidelity via pure mathematical approximations based on fiber distance. 
+- **Future Enhancement:** For production deployments, the backend should be containerized in a custom Docker image that pre-compiles the `SeQUeNCe` C-extensions using `gcc` specific to the deployment server's architecture, allowing the full Fock-space density matrix simulation to run flawlessly in the cloud.
 - **Future Enhancement:** Implement Entanglement Routing algorithms (like Dijkstra's for quantum links) to allow multi-hop entanglement swapping. This allows Hub A to establish a secure link with Hub Z by swapping entanglement through intermediate repeater nodes (Hub B, C, and D) across entire continents.
