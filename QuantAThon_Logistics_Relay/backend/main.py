@@ -99,10 +99,10 @@ class SimulateResponse(BaseModel):
     fidelity_data: list
     qber_data: list
     conference_key_hex: str
-    secret_shares: dict
+    secret_shares: Optional[dict] = None
     protocol: str
     eavesdropper_detected: bool
-    bsm_stats: list
+    bsm_stats: list = []
     summary: dict
 
 

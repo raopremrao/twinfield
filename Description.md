@@ -63,6 +63,10 @@ flowchart TD
 - **Zero-Trust Logic:** Each hub is issued one unique share. The master key does not exist on any single hub. The only way to decrypt the payload is if **all N hubs combine their physical shares using `Share_1 ⊕ Share_2 ... ⊕ Share_N = Master_Key`**.
 - **Use Case:** Perfect for zero-trust environments (like nuclear transport or high-value asset logistics) where no single rogue hub driver should be able to decrypt the route manifest alone.
 
+**The Physical Logistics Workflow (Zero-Trust Nuclear Logistics Scenario):**
+1. **The Physical Rendezvous:** The shares are *never* transmitted over the internet. While trucks are at the origin base, the Quantum Network distributes one unique share to each driver's secure tablet. The trucks then physically drive to the destination (e.g., a nuclear silo). When all trucks arrive, the drivers walk into a secure room and physically plug their devices into an air-gapped terminal. That terminal performs the XOR operation.
+2. **The Reconstructed Key:** The reconstructed Master Key is *never* transported back to the trucks. Once the air-gapped terminal reconstructs the Master Key, it immediately uses it locally to decrypt the highly classified payload (e.g., unlocking the vaults). The Master Key exists for a millisecond in RAM and is instantly deleted. If a driver is hijacked on the highway, the attacker only steals a single share of useless random noise.
+
 ```mermaid
 flowchart TD
     MasterKey{Master Symmetric Key} -->|XOR Logic| Splitter((Secret Sharing Splitter))

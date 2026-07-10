@@ -583,8 +583,26 @@ def _run_sequence_simulation(
         conference_key_hex = _derive_conference_key(final_fidelities, sim_seed, key_size).hex()
         secret_shares = None
         
+    topology_dict = {
+        "nodes": [
+            {"id": s, "type": "spoke", "label": s.replace("Hub_", ""), "x": 0, "y": 0}
+            for s in spoke_names
+        ] + [
+            {"id": "MDI_Relay", "type": "relay", "label": "MDI Relay (Untrusted)", "x": 0, "y": 0}
+        ],
+        "links": [
+            {
+                "source": spoke,
+                "target": "MDI_Relay",
+                "distance_km": (spoke_distances.get(spoke, 100_000) * distance_multiplier) / 1000,
+                "attenuation_db_km": attenuation * 1000,
+            }
+            for spoke in spoke_names
+        ],
+    }
+
     return {
-        "topology": f"Absorptive Quantum Memory MDI-QKD ({len(spoke_names)} Spokes)",
+        "topology": topology_dict,
         "fidelity_data": fidelity_series,
         "qber_data": qber_series,
         "conference_key_hex": conference_key_hex,
@@ -678,8 +696,26 @@ def _run_pure_math_simulation(
         "engine": "Pure Math Fallback (SeQUeNCe Not Found)"
     }
 
+    topology_dict = {
+        "nodes": [
+            {"id": s, "type": "spoke", "label": s.replace("Hub_", ""), "x": 0, "y": 0}
+            for s in spoke_names
+        ] + [
+            {"id": "MDI_Relay", "type": "relay", "label": "MDI Relay (Untrusted)", "x": 0, "y": 0}
+        ],
+        "links": [
+            {
+                "source": spoke,
+                "target": "MDI_Relay",
+                "distance_km": (spoke_distances.get(spoke, 100_000) * distance_multiplier) / 1000,
+                "attenuation_db_km": attenuation * 1000,
+            }
+            for spoke in spoke_names
+        ],
+    }
+
     return {
-        "topology": f"Math Fallback Topology ({len(spoke_names)} Spokes)",
+        "topology": topology_dict,
         "fidelity_data": fidelity_series,
         "qber_data": qber_series,
         "conference_key_hex": conference_key_hex,
