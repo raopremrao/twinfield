@@ -174,11 +174,11 @@ function Dashboard() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex bg-surface-900 rounded-xl p-1 border border-white/5 mr-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+              <div className="flex w-full sm:w-auto bg-surface-900 rounded-xl p-1 border border-white/5">
                 <button
                   onClick={() => setProtocol('CKA')}
-                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     protocol === 'CKA' 
                       ? 'bg-neon-cyan/20 text-neon-cyan' 
                       : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
@@ -188,7 +188,7 @@ function Dashboard() {
                 </button>
                 <button
                   onClick={() => setProtocol('QSS')}
-                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     protocol === 'QSS' 
                       ? 'bg-neon-amber/20 text-neon-amber' 
                       : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
@@ -201,7 +201,7 @@ function Dashboard() {
               {!networkCode && (
                 <button
                   onClick={createNetwork}
-                  className="btn-quantum bg-neon-violet/10 text-neon-violet border-neon-violet/30 hover:bg-neon-violet/20 flex items-center gap-2"
+                  className="btn-quantum w-full sm:w-auto justify-center bg-neon-violet/10 text-neon-violet border-neon-violet/30 hover:bg-neon-violet/20 flex items-center gap-2"
                 >
                   <Network size={16} />
                   Create Multiplayer Network
@@ -211,7 +211,7 @@ function Dashboard() {
                 id="btn-run-normal"
                 onClick={() => runSimulation(false)}
                 disabled={isLoading}
-                className="btn-primary flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary w-full sm:w-auto justify-center flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isLoading && !isAttackMode ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -225,7 +225,7 @@ function Dashboard() {
                 id="btn-run-attack"
                 onClick={() => runSimulation(true)}
                 disabled={isLoading}
-                className="btn-danger flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-danger w-full sm:w-auto justify-center flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isLoading && isAttackMode ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -240,7 +240,7 @@ function Dashboard() {
                   id="btn-fetch-data"
                   onClick={fetchEncryptedData}
                   disabled={isLoadingData}
-                  className="btn-quantum bg-neon-violet/10 text-neon-violet border-neon-violet/30 hover:bg-neon-violet/20 hover:border-neon-violet/50 flex items-center gap-2 disabled:opacity-40"
+                  className="btn-quantum w-full sm:w-auto justify-center bg-neon-violet/10 text-neon-violet border-neon-violet/30 hover:bg-neon-violet/20 hover:border-neon-violet/50 flex items-center gap-2 disabled:opacity-40"
                 >
                   {isLoadingData ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -253,7 +253,7 @@ function Dashboard() {
 
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className={`p-3 rounded-xl border transition-colors ${showSettings ? 'bg-slate-800 border-slate-600 text-white' : 'bg-surface-700/50 border-white/5 text-slate-400 hover:text-white'}`}
+                className={`w-full sm:w-auto p-3 flex justify-center rounded-xl border transition-colors ${showSettings ? 'bg-slate-800 border-slate-600 text-white' : 'bg-surface-700/50 border-white/5 text-slate-400 hover:text-white'}`}
                 title="Tweak Parameters"
               >
                 <Settings2 size={18} />
