@@ -229,7 +229,7 @@ export default function HubView() {
                   {networkStatus?.status?.includes("Generating") ? "Physics Simulation Running..." : "Start Generating Secret Key"}
                 </button>
               </div>
-            ) : simulationData.eavesdropper_detected || (simulationData.qber && simulationData.qber > 0.11) ? (
+            ) : simulationData.eavesdropper_detected || (simulationData.summary?.avg_qber && simulationData.summary.avg_qber > 0.11) ? (
               <div className="text-left bg-neon-red/10 border border-neon-red p-6 rounded-xl shadow-[0_0_15px_rgba(255,0,0,0.2)]">
                 <div className="flex items-center gap-3 mb-4">
                   <ShieldAlert size={24} className="text-neon-red shrink-0" />
@@ -238,7 +238,7 @@ export default function HubView() {
                 <div className="mb-4">
                   <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider">Quantum Bit Error Rate (QBER)</p>
                   <p className="text-2xl font-bold text-white">
-                    {(simulationData.qber * 100).toFixed(2)}%
+                    {((simulationData.summary?.avg_qber || 0) * 100).toFixed(2)}%
                     <span className="text-xs text-neon-red ml-2 tracking-normal uppercase">(Above 11% Threshold)</span>
                   </p>
                 </div>
