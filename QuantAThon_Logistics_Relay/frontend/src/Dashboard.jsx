@@ -616,11 +616,9 @@ function Dashboard() {
         {/* Footer */}
         <footer className="mt-10 pb-6 text-center">
           <p className="text-xs text-slate-600">
-            Built by <span className="text-slate-400 font-medium">Prem</span> for Quant-A-Thon'26
+            Built by <span className="text-slate-400 font-medium">TwinField</span> for Quant-A-Thon'26
             <span className="mx-2 text-slate-700">|</span>
             SeQUeNCe × FastAPI × React
-            <span className="mx-2 text-slate-700">|</span>
-            MAQAN / QuILA Architecture
           </p>
         </footer>
       </main>
