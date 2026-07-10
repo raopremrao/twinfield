@@ -546,9 +546,14 @@ def _run_sequence_simulation(
         remaining_state = density_partial_trace(tuple(map(tuple, states[1])), indices, len(all_keys), TRUNCATION)
         remaining_state_copy = copy(remaining_state)
         remaining_state_copy[0][0] = 0
-        remaining_state_eff = remaining_state_copy / np.trace(remaining_state_copy)
         
-        fidelity = np.trace(remaining_state_eff.dot(build_bell_state(TRUNCATION, "minus"))).real
+        trace_val = np.trace(remaining_state_copy).real
+        if trace_val <= 1e-12:
+            # Signal completely lost due to excessive attenuation
+            fidelity = 0.0
+        else:
+            remaining_state_eff = remaining_state_copy / trace_val
+            fidelity = np.trace(remaining_state_eff.dot(build_bell_state(TRUNCATION, "minus"))).real
         
         # In real physical systems, Eve performing an intercept-resend attack forces 
         # the mixed state fidelity down by exactly 25-30% due to the No-Cloning theorem.
