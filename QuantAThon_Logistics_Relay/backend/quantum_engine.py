@@ -548,7 +548,7 @@ def _run_sequence_simulation(
         remaining_state_copy[0][0] = 0
         
         trace_val = np.trace(remaining_state_copy).real
-        if trace_val <= 1e-12:
+        if np.isnan(trace_val) or trace_val <= 1e-12:
             # Signal completely lost due to excessive attenuation
             fidelity = 0.0
         else:
